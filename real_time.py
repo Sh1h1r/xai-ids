@@ -7,29 +7,23 @@ from scapy.all import sniff
 
 from flow_builder import update_flow
 
-# -----------------------------
 # LOAD MODEL FILES
-# -----------------------------
 model = pickle.load(open("model.pkl", "rb"))
 le = pickle.load(open("encoder.pkl", "rb"))
 columns = pickle.load(open("columns.pkl", "rb"))
 
 explainer = shap.TreeExplainer(model)
 
-# -----------------------------
 # GLOBAL STATS
-# -----------------------------
 flow_count = 0
 label_counts = defaultdict(int)
 feature_importance_sum = np.zeros(len(columns))
 
-print("🚀 Real-time Flow-Based XAI IDS started...")
+print(" Real-time Flow-Based XAI IDS started...")
 print("Press Ctrl+C to stop and show summary.\n")
 
 
-# -----------------------------
 # SHAP HELPER
-# -----------------------------
 def get_shap_values_for_prediction(shap_values, prediction):
     arr = np.array(shap_values)
 
@@ -58,10 +52,7 @@ def get_shap_values_for_prediction(shap_values, prediction):
 
     return vals
 
-
-# -----------------------------
 # PROCESS FLOW
-# -----------------------------
 def process_packet(packet):
     global flow_count, feature_importance_sum
 
@@ -113,9 +104,7 @@ def process_packet(packet):
         print("Error while processing packet:", e)
 
 
-# -----------------------------
 # SUMMARY
-# -----------------------------
 def print_summary():
     print("\n\n ===== IDS SUMMARY =====")
     print(f"\nTotal Flows Analyzed: {flow_count}")
@@ -141,10 +130,7 @@ def print_summary():
 
     print("\n===============================")
 
-
-# -----------------------------
 # START SNIFFING
-# -----------------------------
 try:
     sniff(prn=process_packet, store=False)
 
