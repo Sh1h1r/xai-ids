@@ -7,14 +7,10 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import accuracy_score, classification_report
 
-# -----------------------------
 # LOAD DATASET
-# -----------------------------
 df = pd.read_csv("Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv")
 
-# -----------------------------
 # CLEAN DATA
-# -----------------------------
 df.columns = df.columns.str.strip()
 df = df.dropna()
 df = df.replace([np.inf, -np.inf], 0)
@@ -22,9 +18,7 @@ df = df.replace([np.inf, -np.inf], 0)
 print("Available columns:")
 print(df.columns.tolist())
 
-# -----------------------------
 # SIMPLE FEATURES THAT EXIST
-# -----------------------------
 features = [
     "Destination Port",
     "Packet Length Mean",
@@ -41,17 +35,13 @@ if missing:
 X = df[features]
 y = df["Label"]
 
-# -----------------------------
 # ENCODE LABELS
-# -----------------------------
 le = LabelEncoder()
 y_encoded = le.fit_transform(y)
 
 print("Labels found:", list(le.classes_))
 
-# -----------------------------
 # TRAIN TEST SPLIT
-# -----------------------------
 X_train, X_test, y_train, y_test = train_test_split(
     X,
     y_encoded,
@@ -60,9 +50,7 @@ X_train, X_test, y_train, y_test = train_test_split(
     stratify=y_encoded
 )
 
-# -----------------------------
 # TRAIN MODEL
-# -----------------------------
 model = RandomForestClassifier(
     n_estimators=100,
     random_state=42,
@@ -71,21 +59,15 @@ model = RandomForestClassifier(
 )
 
 model.fit(X_train, y_train)
-
-# -----------------------------
 # EVALUATE
-# -----------------------------
 y_pred = model.predict(X_test)
 
 print("Accuracy:", accuracy_score(y_test, y_pred))
 print(classification_report(y_test, y_pred, target_names=le.classes_))
-
-# -----------------------------
 # SAVE MODEL FILES
-# -----------------------------
 pickle.dump(model, open("model.pkl", "wb"))
 pickle.dump(le, open("encoder.pkl", "wb"))
 pickle.dump(features, open("columns.pkl", "wb"))
 
-print("✅ New model trained and saved!")
+print("New model trained and saved!")
 print("Saved files: model.pkl, encoder.pkl, columns.pkl")
