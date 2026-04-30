@@ -10,9 +10,7 @@ from scapy.all import sniff
 
 from flow_builder import update_flow
 
-# -----------------------------
 # LOAD MODEL
-# -----------------------------
 model = pickle.load(open("model.pkl", "rb"))
 le = pickle.load(open("encoder.pkl", "rb"))
 columns = pickle.load(open("columns.pkl", "rb"))
@@ -24,9 +22,7 @@ flow_count = 0
 label_counts = defaultdict(int)
 feature_importance_sum = np.zeros(len(columns))
 
-# -----------------------------
 # THEME COLORS
-# -----------------------------
 BG_DARK       = "#0a0d12"
 BG_PANEL      = "#0f1319"
 BG_CARD       = "#141920"
@@ -42,9 +38,7 @@ GLOW_CYAN     = "#003344"
 GLOW_GREEN    = "#003322"
 GLOW_RED      = "#330010"
 
-# -----------------------------
 # ROOT WINDOW
-# -----------------------------
 root = tk.Tk()
 root.title("XAI Intrusion Detection System")
 root.geometry("960x720")
@@ -69,9 +63,7 @@ except Exception:
     FONT_STATUS = ("Courier", 9)
 
 
-# -----------------------------
 # HELPER: draw scanline canvas effect
-# -----------------------------
 def make_scanline_canvas(parent, width, height):
     c = tk.Canvas(parent, width=width, height=height,
                   bg=BG_DARK, highlightthickness=0)
@@ -80,9 +72,7 @@ def make_scanline_canvas(parent, width, height):
     return c
 
 
-# -----------------------------
 # TOP HEADER BAR
-# -----------------------------
 header_frame = tk.Frame(root, bg=BG_PANEL, height=72)
 header_frame.pack(fill="x", padx=0, pady=0)
 header_frame.pack_propagate(False)
@@ -132,9 +122,7 @@ status_label.pack(side="left")
 sep = tk.Frame(root, bg=ACCENT_CYAN, height=1)
 sep.pack(fill="x")
 
-# -----------------------------
 # STAT CARDS ROW
-# -----------------------------
 stats_frame = tk.Frame(root, bg=BG_DARK)
 stats_frame.pack(fill="x", padx=14, pady=(10, 4))
 
@@ -167,9 +155,7 @@ _, rate_val   = make_stat_card(stats_frame, "ENGINE STATUS", "IDLE", ACCENT_AMBE
 alert_count = 0
 benign_count = 0
 
-# -----------------------------
 # MAIN CONTENT AREA
-# -----------------------------
 content_frame = tk.Frame(root, bg=BG_DARK)
 content_frame.pack(fill="both", expand=True, padx=14, pady=(4, 0))
 
@@ -266,17 +252,12 @@ tk.Label(footer, text="XAI-IDS v1.0  •  SHAP-powered explanations  •  Real-t
          font=FONT_STATUS, fg=TEXT_DIM, bg=BG_PANEL).pack(side="left", padx=16)
 
 
-# -----------------------------
 # LOG HELPER (colored output)
-# -----------------------------
 def log(text, tag="normal"):
     output.insert(tk.END, text + "\n", tag)
     output.see(tk.END)
 
-
-# -----------------------------
 # SHAP HELPER
-# -----------------------------
 def get_shap_values_for_prediction(shap_values, prediction):
     arr = np.array(shap_values)
     if arr.ndim == 3:
@@ -296,9 +277,7 @@ def get_shap_values_for_prediction(shap_values, prediction):
     return vals
 
 
-# -----------------------------
 # PACKET / FLOW PROCESSING
-# -----------------------------
 def process_packet(packet):
     global flow_count, feature_importance_sum, alert_count, benign_count
 
@@ -363,9 +342,7 @@ def sniff_loop():
         sniff(prn=process_packet, store=False, timeout=1)
 
 
-# -----------------------------
 # BUTTON FUNCTIONS
-# -----------------------------
 def start_ids():
     global running
 
@@ -422,10 +399,7 @@ def stop_ids():
 def clear_output():
     output.delete("1.0", tk.END)
 
-
-# -----------------------------
 # DATASET DEMO
-# -----------------------------
 def run_dataset_demo():
     try:
         log("\n◈  DATASET XAI DEMO", "header")
