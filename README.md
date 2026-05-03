@@ -46,7 +46,7 @@ XAI-IDS/
 
 ## How to Run
 
-### 1. Train the Model (optional)
+### 1. Train the Model
 
 python3 train.py
 
@@ -112,14 +112,6 @@ Destination Port → pushes against prediction
 
 ---
 
-## Future Improvements
-
-- Integrate CICFlowMeter for accurate flow feature extraction  
-- Extend detection to additional attack types  
-- Improve real-time detection accuracy  
-- Add visualization dashboards  
-
----
 
 ## Author
 
