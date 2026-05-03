@@ -1,138 +1,78 @@
-import pickle
-import pandas as pd
-import numpy as np
-import shap
+import time
 from collections import defaultdict
-from scapy.all import sniff
 
-from flow_builder import update_flow
+#main idea is that flow dictionary has a unique flow key for each flow and the flow is collected for 3 seconds
+#first packet alwyas starts a flow which has a timespan of 3 seconds and any arrving packets are added to it the last packet after 3 seconds triggers
+#the closing of the flow and pops the flow key and after summary the next packages open a new flow 
 
-# LOAD MODEL FILES
-model = pickle.load(open("model.pkl", "rb"))
-le = pickle.load(open("encoder.pkl", "rb"))
-columns = pickle.load(open("columns.pkl", "rb"))
+FLOW_TIMEOUT = 3# a window of 3 seconds if flow is longer than that its complete
 
-explainer = shap.TreeExplainer(model)
+flows = defaultdict(lambda: {   #stores active net flows 
+    "start_time": None,         #default dict ensures that if a new flow key appears
+    "packet_count": 0,          #it creates a new dict with same struct w/o throwing an error
+    "total_bytes": 0,           #this is flag checking
+    "packet_lengths": []        
+})
 
-# GLOBAL STATS
-flow_count = 0
-label_counts = defaultdict(int)
-feature_importance_sum = np.zeros(len(columns))
-
-print(" Real-time Flow-Based XAI IDS started...")
-print("Press Ctrl+C to stop and show summary.\n")
-
-
-# SHAP HELPER
-def get_shap_values_for_prediction(shap_values, prediction):
-    arr = np.array(shap_values)
-
-    # New SHAP format: (samples, features, classes)
-    if arr.ndim == 3:
-        vals = arr[0, :, prediction]
-
-    # Old SHAP format: list[class][sample][feature]
-    elif isinstance(shap_values, list):
-        vals = np.array(shap_values[prediction][0])
-
-    # Simple format: (samples, features)
-    elif arr.ndim == 2:
-        vals = arr[0]
-
-    else:
-        vals = arr.flatten()
-
-    vals = np.array(vals).flatten()
-
-    # Safety: match feature count
-    if len(vals) > len(columns):
-        vals = vals[:len(columns)]
-    elif len(vals) < len(columns):
-        vals = np.pad(vals, (0, len(columns) - len(vals)))
-
-    return vals
-
-# PROCESS FLOW
-def process_packet(packet):
-    global flow_count, feature_importance_sum
-
+#now we create a 5 tuple identifier for the net connectn 
+#a flow is defined as ,source ip,dest ip,source port,destnation port and protocol TCP UDP
+def get_flow_key(packet):
     try:
-        # Flow builder collects packets and returns features only when flow is ready
-        features = update_flow(packet)
+        if packet.haslayer("IP"):   #if a packet has ip header (bro i frogot)
+            ip = packet["IP"]
+            proto = ip.proto #packet's protocol header
 
-        if features is None:
-            return
+            if packet.haslayer("TCP") or packet.haslayer("UDP"): #both have source and destination ports
+                sport = packet.sport 
+                dport = packet.dport
+            else:
+                sport = 0
+                dport = 0 #for icmp cuz no port info
 
-        flow_count += 1
+            return (ip.src, ip.dst, sport, dport, proto) #if tuple so when stored in the dict the values are less likely to change 
 
-        # Keep only model columns
-        model_features = {col: features.get(col, 0) for col in columns}
-        features_df = pd.DataFrame([model_features], columns=columns)
+    except Exception:
+        return None
 
-        # ML prediction
-        prediction = model.predict(features_df)[0]
-        label = le.inverse_transform([prediction])[0]
+    return None #if no return from try and except both
 
-        label_counts[label] += 1
+# packet handling eveyrthing has a flow key if its a new flow its current time is recorded as start_time
+def update_flow(packet): #mandatory call for each packet
+    key = get_flow_key(packet) #unique flow identifier checks which flow the packet belongs to 
 
-        print(f"\nFlow {flow_count} → {label}")
+    if key is None: #just skip if the key isnt there
+        return None
 
-        if label != "BENIGN":
-            print("ALERT:", label)
+    now = time.time() #current timestamp
+    flow = flows[key]   
 
-        # XAI explanation using SHAP
-        shap_values = explainer.shap_values(features_df)
-        vals = get_shap_values_for_prediction(shap_values, prediction)
+    if flow["start_time"] is None: #new flow
+        flow["start_time"] = now
 
-        feature_importance_sum += np.abs(vals)
+    pkt_len = len(packet)
 
-        print("Why model predicted this:")
+    flow["packet_count"] += 1
+    flow["total_bytes"] += pkt_len
+    flow["packet_lengths"].append(pkt_len)
 
-        top_features = sorted(
-            zip(columns, vals),
-            key=lambda x: abs(float(x[1])),
-            reverse=True
-        )[:3]
+    if now - flow["start_time"] >= FLOW_TIMEOUT: #checking the timespan
+        completed_flow = flows.pop(key)
+        return build_features(completed_flow, key)
 
-        for feature, value in top_features:
-            direction = "supports prediction" if value > 0 else "pushes against prediction"
-            print(f"  {feature}: {value:.4f} ({direction})")
-
-        print("-" * 40)
-
-    except Exception as e:
-        print("Error while processing packet:", e)
+    return None
 
 
-# SUMMARY
-def print_summary():
-    print("\n\n ===== IDS SUMMARY =====")
-    print(f"\nTotal Flows Analyzed: {flow_count}")
+def build_features(flow, key):
+    src, dst, sport, dport, proto = key #unpacking the featueres from the tuple
 
-    print("\nTraffic Breakdown:")
-    if flow_count == 0:
-        print("  No completed flows detected.")
-    else:
-        for label, count in label_counts.items():
-            percent = (count / flow_count) * 100
-            print(f"  {label}: {count} ({percent:.2f}%)")
+    packet_lengths = flow["packet_lengths"] #a list of all packet lengths in the flow
 
-    print("\nTop Influential XAI Features Overall:")
+    return {
+        "Destination Port": dport, #the main summary
+        "Packet Length Mean": sum(packet_lengths) / len(packet_lengths),
+        "Fwd Packet Length Max": max(packet_lengths),
+        "Total Length of Fwd Packets": flow["total_bytes"],
 
-    top_features = sorted(
-        zip(columns, feature_importance_sum),
-        key=lambda x: x[1],
-        reverse=True
-    )[:5]
-
-    for feature, value in top_features:
-        print(f"  {feature}: {value:.4f}")
-
-    print("\n===============================")
-
-# START SNIFFING
-try:
-    sniff(prn=process_packet, store=False)
-
-finally:
-    print_summary()
+        # used only for live rule, not ML model
+        "Flow Packet Count": flow["packet_count"]
+    }
