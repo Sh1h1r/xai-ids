@@ -4,7 +4,7 @@
 
 This project implements a real-time Intrusion Detection System (IDS) using Machine Learning and Explainable AI (XAI).
 
-It captures live network traffic, converts packets into flows, predicts whether the traffic is benign or a DDoS attack, and explains each prediction using SHAP (SHapley Additive Explanations).
+It captures live network traffic, converts packets into flows, predicts whether the traffic is benign or a DDoS or portscan attack, and explains each prediction using SHAP (SHapley Additive Explanations).
 
 ---
 
@@ -41,7 +41,6 @@ XAI-IDS/
 ├── model.pkl
 ├── encoder.pkl
 ├── columns.pkl
-├── Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv
 
 ---
 
@@ -53,7 +52,7 @@ python3 train.py
 
 ### 2. Run GUI (recommended)
 
-sudo python3 app.py
+sudo python3 app1.py
 
 ### 3. Run Real-Time IDS (terminal mode)
 
@@ -74,7 +73,8 @@ Network Traffic → Packet Capture → Flow Builder → ML Model → Prediction 
 ## Prediction Classes
 
 - BENIGN  
-- DDoS  
+- DDoS
+- PortScan
 
 ---
 
